@@ -33,4 +33,167 @@ async function generate(){let btn=$('#generate');if(!$('#business').value.trim()
 $('#generator').addEventListener('submit',e=>{e.preventDefault();generate()});$('#regenerate').addEventListener('click',generate);$('#copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(lastText);showToast('Texto copiado!')}catch(e){let ta=document.createElement('textarea');ta.value=lastText;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showToast('Texto copiado!')}});
 function quick(type){let texts={bastidores:'bastidores do meu negócio',dica:'uma dica prática para meus clientes',oferta:'uma oferta especial',duvida:'uma dúvida frequente dos clientes',antes:'uma transformação real',erro:'um erro comum no meu segmento',produto:'um produto ou serviço em destaque',historia:'a história da minha marca'};$('#details').value=texts[type]||'';showView('studio');$('#business').focus();showToast('Ideia adicionada. Complete seu nicho para continuar.')}
 let toastTimer;function showToast(msg){let t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
-</script></body></html>
+</script> <script type="module">
+import { createClient } from
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const supabase = createClient(
+  'https://djjtqbamsmqqeqllcjim.supabase.co',
+  'sb_publishable_cYpgWeA2Kze_wv0EKOH5iQ_WBfCOUOz'
+);
+
+const panel = document.createElement('section');
+
+panel.style.cssText = `
+  max-width:600px;
+  margin:0 auto 24px;
+  padding:20px;
+  background:#171725;
+  border:1px solid #303047;
+  border-radius:20px;
+  color:#f7f6ff;
+  font-family:inherit;
+`;
+
+panel.innerHTML = `
+  <h2 style="margin-top:0">Sua conta Viraliza AI</h2>
+  <p style="color:#aaa9c2;font-size:13px">
+    Entre ou crie sua conta para começar.
+  </p>
+
+  <form id="va-auth-form">
+    <label for="va-email">Seu e-mail</label>
+    <input id="va-email" type="email" required
+      autocomplete="email" placeholder="voce@exemplo.com"
+      style="display:block;box-sizing:border-box;width:100%;
+      padding:12px;margin:7px 0 14px;background:#11111e;
+      color:white;border:1px solid #39394f;border-radius:10px">
+
+    <label for="va-password">Senha (mínimo 6 caracteres)</label>
+    <input id="va-password" type="password" required
+      minlength="6" autocomplete="current-password"
+      placeholder="Digite sua senha"
+      style="display:block;box-sizing:border-box;width:100%;
+      padding:12px;margin:7px 0 14px;background:#11111e;
+      color:white;border:1px solid #39394f;border-radius:10px">
+
+    <button type="submit" id="va-login"
+      style="width:100%;padding:12px;margin-bottom:9px;
+      background:#9272ff;color:white;border:0;border-radius:10px">
+      Entrar
+    </button>
+
+    <button type="button" id="va-signup"
+      style="width:100%;padding:12px;background:#222235;
+      color:white;border:1px solid #414057;border-radius:10px">
+      Criar minha conta
+    </button>
+  </form>
+
+  <div id="va-account" hidden>
+    <p id="va-user"></p>
+    <button id="va-logout"
+      style="padding:10px 14px;background:#302747;color:white;
+      border:1px solid #51406f;border-radius:10px">
+      Sair da conta
+    </button>
+  </div>
+
+  <p id="va-message" role="status" aria-live="polite"
+    style="font-size:13px;overflow-wrap:anywhere"></p>
+`;
+
+document.querySelector('.hero').before(panel);
+
+const form = panel.querySelector('#va-auth-form');
+const email = panel.querySelector('#va-email');
+const password = panel.querySelector('#va-password');
+const message = panel.querySelector('#va-message');
+const account = panel.querySelector('#va-account');
+const userLabel = panel.querySelector('#va-user');
+const loginButton = panel.querySelector('#va-login');
+const signupButton = panel.querySelector('#va-signup');
+
+function showMessage(text) {
+  message.textContent = text;
+}
+
+function updateAccount(user) {
+  form.hidden = !!user;
+  account.hidden = !user;
+
+  if (user) {
+    userLabel.textContent = 'Você entrou como: ' + user.email;
+    showMessage('Login realizado com sucesso!');
+  } else {
+    userLabel.textContent = '';
+  }
+}
+
+loginButton.addEventListener('click', () => {
+  form.dataset.action = 'login';
+});
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const action = form.dataset.action || 'login';
+  const mail = email.value.trim();
+  const pass = password.value;
+
+  loginButton.disabled = true;
+  signupButton.disabled = true;
+  showMessage('Aguarde...');
+
+  try {
+    const { data, error } = action === 'signup'
+      ? await supabase.auth.signUp({
+          email: mail,
+          password: pass
+        })
+      : await supabase.auth.signInWithPassword({
+          email: mail,
+          password: pass
+        });
+
+    if (error) throw error;
+
+    if (action === 'signup' && !data.session) {
+      showMessage(
+        'Cadastro iniciado! Confira seu e-mail para confirmar a conta.'
+      );
+    } else if (data.user) {
+      updateAccount(data.user);
+    }
+  } catch (error) {
+    showMessage('Não foi possível continuar: ' + error.message);
+  } finally {
+    loginButton.disabled = false;
+    signupButton.disabled = false;
+    form.dataset.action = 'login';
+  }
+});
+
+signupButton.addEventListener('click', () => {
+  form.dataset.action = 'signup';
+  form.requestSubmit();
+});
+
+panel.querySelector('#va-logout').addEventListener('click', async () => {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    showMessage('Erro ao sair: ' + error.message);
+  } else {
+    updateAccount(null);
+    showMessage('Você saiu da sua conta.');
+  }
+});
+
+const { data: initial } = await supabase.auth.getSession();
+updateAccount(initial.session?.user || null);
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  updateAccount(session?.user || null);
+});
+  </script></body></html>
